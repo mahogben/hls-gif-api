@@ -5,6 +5,11 @@ const exphbs = require('express-handlebars');
 const db = require('./db/db');
 const index = require('./routes/index');
 const bodyParser = require('body-parser');
+const spawn = require('child_process').spawn;
+
+
+
+
 
 const app = express();
 
@@ -19,6 +24,20 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/api/v1/todos', (req, res) => {
+    let tempFilePath = './audio/output.wav';
+    let fileName = './converted/someConvertedFile.aac';
+    
+    let ffmpeg = spawn('ffmpeg', ['-i', `${ tempFilePath }`, '-c:a', 'aac', `${ fileName }`]);
+    ffmpeg.on('exit', (statusCode) => {
+    if (statusCode === 0) {
+        console.log('conversion successful')
+    }
+    })
+    ffmpeg
+    .stderr
+    .on('data', (err) => {
+        console.log('err:', new String(err))
+    })
     res.status(200).send({
         success: 'true',
         message: 'todos retrieved sucessfully',
