@@ -3,13 +3,8 @@
 const express = require('express');
 const exphbs = require('express-handlebars');
 const db = require('./db/db');
-const index = require('./routes/index');
 const bodyParser = require('body-parser');
 const spawn = require('child_process').spawn;
-
-
-
-
 
 const app = express();
 
@@ -23,33 +18,36 @@ app.set('view engine', 'handlebars');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-app.get('/api/v1/todos', (req, res) => {
-    let tempFilePath = './audio/oceans.mp4';
-    let fileName = './converted/output.gif';
-    
-    let ffmpeg = spawn('ffmpeg', [ '-ss', '12', '-t', '5', '-i', `${ tempFilePath }`, '-f', 'gif', `${ fileName }`]);
-    ffmpeg.on('exit', (statusCode) => {
-    if (statusCode === 0) {
-        console.log('conversion successful')
-    }
-    })
-    ffmpeg
-    .stderr
-    .on('data', (err) => {
-        console.log('err:', new String(err))
-    })
+app.get('/v1/hls-gif', (req, res) => {
+    console.log(req.query);
+    let fileName =  __dirname+ '/converted/output.gif';
+    let manifestInput = req.query.manifest;
+    let duration = req.query.duration;
+    let startTime = req.query.startTime
+    try {
+        let ffmpeg = spawn('ffmpeg', [ '-y', '-ss', `${startTime}`, '-t', `${duration}`, '-i', `${ manifestInput }`, '-pix_fmt', 'rgb24', '-f', 'gif', `${ fileName }`]);
+        ffmpeg.on('exit', (statusCode) => {
+            if (statusCode === 0) {
+                console.log('conversion successful')
+            }
+        })
+        ffmpeg
+        .stderr
+        .on('data', (err) => {
+            console.log('err:', new String(err))
+        })
+    } catch (e) {
+        console.error(e)
+    }        
     res.status(200).send({
-        success: 'true',
-        message: 'todos retrieved sucessfully',
-        todos: db
-    })
+        message: 'GIF job submitted successfully',
+        uri: fileName
+    });
 });
 
 app.get('/api/v1/todos/:id', (req, res) => {
     const id = parseInt(req.params.id, 10);
-    console.log(id)
     db.map((todo) => {
-        console.log(todo.id);
         if ( todo.id === id ) {
             return res.status(200).send({
                 success:'true',
@@ -99,14 +97,12 @@ app.put('/api/v1/todos/:id', (req, res) => {
         itemIndex = index;
       }
     });
-  
     if (!todoFound) {
       return res.status(404).send({
         success: 'false',
         message: 'todo not found',
       });
     }
-  
     if (!req.body.title) {
       return res.status(400).send({
         success: 'false',
@@ -118,15 +114,12 @@ app.put('/api/v1/todos/:id', (req, res) => {
         message: 'description is required',
       });
     }
-  
     const updatedTodo = {
       id: todoFound.id,
       title: req.body.title || todoFound.title,
       description: req.body.description || todoFound.description,
     };
-  
     db.splice(itemIndex, 1, updatedTodo);
-  
     return res.status(201).send({
       success: 'true',
       message: 'todo added successfully',
