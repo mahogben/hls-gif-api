@@ -24,10 +24,10 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/api/v1/todos', (req, res) => {
-    let tempFilePath = './audio/output.wav';
-    let fileName = './converted/someConvertedFile.aac';
+    let tempFilePath = './audio/oceans.mp4';
+    let fileName = './converted/output.gif';
     
-    let ffmpeg = spawn('ffmpeg', ['-i', `${ tempFilePath }`, '-c:a', 'aac', `${ fileName }`]);
+    let ffmpeg = spawn('ffmpeg', [ '-ss', '12', '-t', '5', '-i', `${ tempFilePath }`, '-f', 'gif', `${ fileName }`]);
     ffmpeg.on('exit', (statusCode) => {
     if (statusCode === 0) {
         console.log('conversion successful')
