@@ -21,20 +21,36 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.get('/v1/hls-gif', (req, res) => {
     console.log(req.query);
     let fileName =  __dirname+ '/converted/output.gif';
+    let paletteName =  __dirname+ '/palettes/palette.png';
     let manifestInput = req.query.manifest;
     let duration = req.query.duration;
-    let startTime = req.query.startTime
+    let startTime = req.query.startTime;
+
     try {
-        let ffmpeg = spawn('ffmpeg', [ '-y', '-ss', `${startTime}`, '-t', `${duration}`, '-i', `${ manifestInput }`, '-pix_fmt', 'rgb24', '-f', 'gif', `${ fileName }`]);
-        ffmpeg.on('exit', (statusCode) => {
+        let paletteJob = spawn('ffmpeg', [ '-y', '-ss', `${startTime}`, '-t', `${duration}`, '-i', `${ manifestInput }`, '-vf', 'scale=320:-1:flags=lanczos,palettegen', `${ paletteName }`])
+        paletteJob.on('exit', (statusCode) => {
             if (statusCode === 0) {
-                console.log('conversion successful')
+                try {
+                    let gifJob = spawn('ffmpeg', [ '-y', '-ss', `${startTime}`, '-t', `${duration}`, '-i', `${ manifestInput }`,'-i', `${ paletteName }`, '-filter_complex', 'scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse', `${ fileName }`]);
+                    gifJob.on('exit', (statusCode) => {
+                        if (statusCode === 0){
+                            console.log('done')
+                        }
+                    });
+                    gifJob
+                    .stderr
+                    .on('data', (err) => {
+                        //console.log('err:', new String(err))
+                    })
+                } catch (e) {
+                    console.error(e);
+                }
             }
         })
-        ffmpeg
+        paletteJob
         .stderr
         .on('data', (err) => {
-            console.log('err:', new String(err))
+            //console.log('err:', new String(err))
         })
     } catch (e) {
         console.error(e)
@@ -45,6 +61,7 @@ app.get('/v1/hls-gif', (req, res) => {
     });
 });
 
+/*
 app.get('/api/v1/todos/:id', (req, res) => {
     const id = parseInt(req.params.id, 10);
     db.map((todo) => {
@@ -143,6 +160,7 @@ app.delete('/api/v1/todos/:id', (req, res) => {
         message: 'todo not found'
     });
 });
+*/
 
 //app.use('/', index);
 
